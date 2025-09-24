@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Transaction, Category } from '@mibudget/shared';
+import { Transaction } from '@mibudget/shared';
 import { TransactionListItem } from './TransactionListItem';
 import { TransactionModal } from './TransactionModal';
 
 interface TransactionListProps {
   transactions: Transaction[];
-  categories: Category[];
   showPendingBadges?: boolean;
   limit?: number;
   className?: string;
@@ -17,7 +16,6 @@ interface GroupedTransactions {
 
 export function TransactionList({ 
   transactions, 
-  categories, 
   showPendingBadges = false,
   limit,
   className = ''
@@ -52,9 +50,6 @@ export function TransactionList({
     setEditingTransaction(null);
   };
 
-  const getCategoryById = (categoryId: string | null | undefined) => {
-    return categoryId ? categories.find(c => c.id === categoryId) : undefined;
-  };
 
   const formatDateHeader = (dateString: string) => {
     const date = new Date(dateString);
@@ -107,7 +102,6 @@ export function TransactionList({
                 <TransactionListItem
                   key={transaction.id}
                   transaction={transaction}
-                  category={getCategoryById(transaction.category_id)}
                   onEdit={handleEdit}
                   showPendingBadge={showPendingBadges}
                 />

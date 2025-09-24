@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { Transaction, Category } from '@mibudget/shared';
+import { Transaction } from '@mibudget/shared';
 import { useAppStore } from '../stores/appStoreWithDB';
 
 interface TransactionListItemProps {
   transaction: Transaction;
-  category?: Category;
   onEdit: (transactionId: string, type: 'income' | 'expense') => void;
   showPendingBadge?: boolean;
 }
 
 export function TransactionListItem({ 
   transaction, 
-  category, 
   onEdit, 
   showPendingBadge = false 
 }: TransactionListItemProps) {
@@ -19,8 +17,8 @@ export function TransactionListItem({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const isIncome = transaction.amount_cents > 0;
-  const amount = Math.abs(transaction.amount_cents) / 100;
+  const isIncome = transaction.type === 'income' || transaction.type === 'adjustment';
+  const amount = transaction.amount_cents / 100;
   const date = new Date(transaction.occurred_at).toLocaleDateString();
 
   const handleDelete = async () => {
@@ -66,11 +64,6 @@ export function TransactionListItem({
           </div>
           <div className="flex items-center space-x-4 mt-1">
             <p className="text-sm text-gray-500">{date}</p>
-            {category && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {category.name}
-              </span>
-            )}
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useAppStore } from '../stores/appStoreWithDB';
 import { useSettingsStore } from '../stores/settingsStore';
 import { TransactionModal } from '../components/TransactionModal';
 import { TransactionList } from '../components/TransactionList';
+import { Logo } from '../components/Logo';
 import { formatMoney, getNextRevealDay, DAYS_OF_WEEK, TransactionType } from '@mibudget/shared';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -28,9 +29,9 @@ export function DashboardPage() {
       <header className="bg-white border-b border-gray-200 safe-area-top">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">MiBudget</h1>
-              <div className="flex items-center mt-1">
+            <div className="flex items-center space-x-3">
+              <Logo size="md" />
+              <div className="flex items-center">
                 <div className={`w-2 h-2 rounded-full mr-2 ${
                   isSyncing ? 'bg-yellow-400 animate-pulse' : 
                   isOnline ? 'bg-green-400' : 'bg-gray-400'
@@ -40,12 +41,16 @@ export function DashboardPage() {
                 </span>
               </div>
             </div>
-            <button className="p-2 text-gray-400 hover:text-gray-600">
+            <Link 
+              to="/settings" 
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Settings"
+            >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -85,28 +90,30 @@ export function DashboardPage() {
         <div className="grid grid-cols-2 gap-4 mb-8">
           <button 
             onClick={() => setTransactionModal({isOpen: true, type: 'income'})}
-            className="flex flex-col items-center justify-center p-6 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-sm transition-all duration-200 active:scale-95"
+            className="group relative overflow-hidden flex flex-col items-center justify-center p-8 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
           >
-            <div className="w-12 h-12 bg-green-400 rounded-full flex items-center justify-center mb-3">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+            <div className="w-16 h-16 bg-white bg-opacity-20 backdrop-blur rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </div>
-            <span className="font-medium">Income</span>
-            <span className="text-xs text-green-200">Add money</span>
+            <span className="font-bold text-xl mb-1">Income</span>
+            <span className="text-sm text-green-100 opacity-90">Add money</span>
           </button>
 
           <button 
             onClick={() => setTransactionModal({isOpen: true, type: 'expense'})}
-            className="flex flex-col items-center justify-center p-6 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all duration-200 active:scale-95"
+            className="group relative overflow-hidden flex flex-col items-center justify-center p-8 bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
           >
-            <div className="w-12 h-12 bg-red-400 rounded-full flex items-center justify-center mb-3">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+            <div className="w-16 h-16 bg-white bg-opacity-20 backdrop-blur rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
               </svg>
             </div>
-            <span className="font-medium">Expense</span>
-            <span className="text-xs text-red-200">Track spending</span>
+            <span className="font-bold text-xl mb-1">Expense</span>
+            <span className="text-sm text-red-100 opacity-90">Track spending</span>
           </button>
         </div>
 
@@ -126,8 +133,7 @@ export function DashboardPage() {
           
           <TransactionList 
             transactions={recentTransactions}
-            categories={categories}
-            showPendingBadges={true}
+            showPendingBadges={false}
             limit={5}
             className="border-none rounded-none shadow-none"
           />

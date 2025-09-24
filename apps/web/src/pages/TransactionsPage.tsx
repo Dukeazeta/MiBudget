@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/appStoreWithDB';
 import { useSettingsStore } from '../stores/settingsStore';
 import { TransactionModal } from '../components/TransactionModal';
 import { TransactionList } from '../components/TransactionList';
+import { Logo } from '../components/Logo';
 import { TransactionType } from '@mibudget/shared';
 
 export function TransactionsPage() {
@@ -11,7 +12,6 @@ export function TransactionsPage() {
   const { settings } = useSettingsStore();
   const [transactionModal, setTransactionModal] = useState<{isOpen: boolean, type: TransactionType} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [transactionType, setTransactionType] = useState<string>('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
@@ -26,13 +26,6 @@ export function TransactionsPage() {
           const description = (transaction.description || '').toLowerCase();
           const amount = (Math.abs(transaction.amount_cents) / 100).toString();
           return description.includes(query) || amount.includes(query);
-        }
-        return true;
-      })
-      .filter(transaction => {
-        // Category filter
-        if (selectedCategory) {
-          return transaction.category_id === selectedCategory;
         }
         return true;
       })
@@ -58,16 +51,15 @@ export function TransactionsPage() {
         return true;
       })
       .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
-  }, [transactions, searchQuery, selectedCategory, transactionType, dateRange]);
+  }, [transactions, searchQuery, transactionType, dateRange]);
 
   const clearFilters = () => {
     setSearchQuery('');
-    setSelectedCategory('');
     setTransactionType('');
     setDateRange({ from: '', to: '' });
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory || transactionType || dateRange.from || dateRange.to;
+  const hasActiveFilters = searchQuery || transactionType || dateRange.from || dateRange.to;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -84,9 +76,9 @@ export function TransactionsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
-                <div className="flex items-center mt-1">
+              <div className="flex items-center space-x-3">
+                <Logo size="sm" />
+                <div className="flex items-center">
                   <div className={`w-2 h-2 rounded-full mr-2 ${
                     isSyncing ? 'bg-yellow-400 animate-pulse' : 
                     isOnline ? 'bg-green-400' : 'bg-gray-400'
@@ -118,6 +110,16 @@ export function TransactionsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </button>
+              <Link
+                to="/settings"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Settings"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </Link>
             </div>
           </div>
         </div>
@@ -126,7 +128,7 @@ export function TransactionsPage() {
       <main className="max-w-4xl mx-auto px-4 py-6">
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
               <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
@@ -140,26 +142,6 @@ export function TransactionsPage() {
                 placeholder="Search descriptions..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-            </div>
-
-            {/* Category Filter */}
-            <div>
-              <label htmlFor="category-filter" className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                id="category-filter"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Type Filter */}
@@ -225,8 +207,7 @@ export function TransactionsPage() {
         {/* Transactions List */}
         <TransactionList 
           transactions={filteredTransactions}
-          categories={categories}
-          showPendingBadges={true}
+          showPendingBadges={false}
         />
 
         {/* Empty State */}

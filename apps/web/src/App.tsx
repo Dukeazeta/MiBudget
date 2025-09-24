@@ -6,10 +6,14 @@ import { syncEngine } from './services/syncEngine';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { SplashScreen } from './components/SplashScreen';
 
 function App() {
   const { settings, loadSettings, checkBalanceVisibility } = useSettingsStore();
   const { setOnlineStatus, loadAllData } = useAppStore();
+  const [isInitialized, setIsInitialized] = React.useState(false);
+  const [initMessage, setInitMessage] = React.useState('Initializing...');
 
   // Handle online/offline status
   useEffect(() => {
@@ -29,18 +33,28 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Load settings and data from IndexedDB
-        await Promise.all([
-          loadSettings(),
-          loadAllData(),
-        ]);
+        setInitMessage('Loading settings...');
+        await loadSettings();
         
+        setInitMessage('Loading data...');
+        await loadAllData();
+        
+        setInitMessage('Setting up sync...');
         // Start auto-sync if online
         if (navigator.onLine) {
           syncEngine.startAutoSync();
         }
+        
+        // Small delay to show the splash screen
+        setInitMessage('Ready!');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setIsInitialized(true);
       } catch (error) {
         console.error('Failed to initialize app:', error);
+        setInitMessage('Failed to initialize. Please refresh.');
+        // Still set as initialized to show the app, even if there was an error
+        setTimeout(() => setIsInitialized(true), 2000);
       }
     };
     
@@ -62,6 +76,11 @@ function App() {
     return () => clearInterval(interval);
   }, [checkBalanceVisibility]);
 
+  // Show splash screen during initialization
+  if (!isInitialized) {
+    return <SplashScreen message={initMessage} />;
+  }
+
   // Show onboarding if no settings
   if (!settings) {
     return (
@@ -76,6 +95,7 @@ function App() {
     <Routes>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/transactions" element={<TransactionsPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

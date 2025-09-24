@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../stores/appStoreWithDB';
 import { TransactionType } from '@mibudget/shared';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -9,38 +10,46 @@ interface TransactionModalProps {
   transactionId?: string;
 }
 
+type ModalStep = 'amount' | 'details';
+
 export function TransactionModal({ isOpen, onClose, type, transactionId }: TransactionModalProps) {
-  const { transactions, categories, createTransaction, updateTransaction } = useAppStore();
+  const { transactions, createTransaction, updateTransaction } = useAppStore();
+  const [step, setStep] = useState<ModalStep>('amount');
   const [amount, setAmount] = useState('');
-  const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
 
   const isEditing = !!transactionId;
-  const title = isEditing 
-    ? `Edit ${type === 'income' ? 'Income' : 'Expense'}` 
-    : `Add ${type === 'income' ? 'Income' : 'Expense'}`;
 
   useEffect(() => {
-    if (isEditing && transactionId) {
-      const transaction = transactions.find(t => t.id === transactionId);
-      if (transaction) {
-        setAmount((Math.abs(transaction.amount_cents) / 100).toString());
-        setCategoryId(transaction.category_id || '');
-        setDescription(transaction.description || '');
-        setDate(transaction.occurred_at.split('T')[0]);
+    if (isOpen) {
+      if (isEditing && transactionId) {
+        const transaction = transactions.find(t => t.id === transactionId);
+        if (transaction) {
+          setAmount((Math.abs(transaction.amount_cents) / 100).toString());
+          setDescription(transaction.description || '');
+          setStep('details'); // Go directly to details for editing
+        }
+      } else {
+        // Reset form for new transaction
+        setAmount('');
+        setDescription('');
+        setStep('amount'); // Start with amount step
       }
-    } else {
-      // Reset form for new transaction
-      setAmount('');
-      setCategoryId('');
-      setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
     }
   }, [isOpen, isEditing, transactionId, transactions]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAmountSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) return;
+    setStep('details');
+  };
+
+  const handleBack = () => {
+    setStep('amount');
+  };
+
+  const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(parseFloat(amount))) return;
 
@@ -48,11 +57,10 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
     try {
       const amountCents = Math.round(parseFloat(amount) * 100);
       const transactionData = {
-        amount_cents: type === 'income' ? amountCents : -amountCents,
+        amount_cents: amountCents, // Always store as positive, the type determines if it adds or subtracts
         type,
-        category_id: categoryId || undefined,
         description: description || undefined,
-        occurred_at: new Date(date + 'T12:00:00.000Z').toISOString(),
+        occurred_at: new Date().toISOString(),
       };
 
       if (isEditing && transactionId) {
@@ -73,113 +81,155 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <span className="sr-only">Close</span>
-              ✕
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md animate-slide-up">
+        
+        {/* Step 1: Amount */}
+        {step === 'amount' && (
+          <div className="p-8 text-center">
+            <div className="mb-8">
+              <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                type === 'income' ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                <svg className={`w-8 h-8 ${
+                  type === 'income' ? 'text-green-600' : 'text-red-600'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {type === 'income' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  )}
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                How much?
+              </h2>
+              <p className="text-gray-500">
+                {type === 'income' ? 'Money coming in' : 'Money going out'}
+              </p>
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-                Amount
-              </label>
+            <form onSubmit={handleAmountSubmit} className="space-y-6">
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                  $
-                </span>
                 <input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0.00"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numbers and decimal point
+                    if (/^\d*\.?\d*$/.test(value)) {
+                      setAmount(value);
+                    }
+                  }}
+                  className="w-full text-4xl font-bold text-center bg-transparent border-none outline-none text-gray-900 placeholder-gray-300"
+                  placeholder="0"
+                  autoFocus
                   required
                 />
+                <div className="text-center mt-2">
+                  <span className="text-lg text-gray-400">$</span>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-4 text-gray-600 font-medium transition-colors hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`flex-1 py-4 rounded-xl font-bold text-white transition-all transform hover:scale-105 ${
+                    amount && parseFloat(amount) > 0
+                      ? type === 'income'
+                        ? 'bg-green-600 hover:bg-green-700 shadow-lg' 
+                        : 'bg-red-600 hover:bg-red-700 shadow-lg'
+                      : 'bg-gray-300 cursor-not-allowed'
+                  }`}
+                  disabled={!amount || parseFloat(amount) <= 0}
+                >
+                  Continue
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Step 2: Details */}
+        {step === 'details' && (
+          <div className="p-8">
+            <div className="mb-6">
+              <button
+                onClick={handleBack}
+                className="flex items-center text-gray-600 hover:text-gray-800 mb-4 transition-colors"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+              
+              <div className="text-center mb-6">
+                <div className={`text-3xl font-bold mb-2 ${
+                  type === 'income' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  ${parseFloat(amount || '0').toFixed(2)}
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {type === 'income' ? 'From where?' : 'For what?'}
+                </h2>
               </div>
             </div>
 
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                id="category"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <form onSubmit={handleFinalSubmit} className="space-y-6">
+              <div>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full p-6 text-2xl text-center border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+                  placeholder={type === 'income' ? 'Salary, freelance, gift...' : 'Groceries, coffee, gas...'}
+                  autoFocus
+                />
+                <p className="text-sm text-gray-500 text-center mt-3">
+                  {type === 'income' ? 'Where did this money come from?' : 'What did you spend money on?'}
+                </p>
+              </div>
 
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <input
-                id="description"
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Optional description"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-                Date
-              </label>
-              <input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={`flex-1 px-4 py-2 rounded-md text-white focus:ring-2 focus:ring-offset-2 transition-colors ${
-                  type === 'income'
-                    ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                    : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                }`}
-                disabled={loading || !amount}
-              >
-                {loading ? 'Saving...' : (isEditing ? 'Update' : 'Add')} {type === 'income' ? 'Income' : 'Expense'}
-              </button>
-            </div>
-          </form>
-        </div>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-4 text-gray-600 font-medium transition-colors hover:text-gray-800"
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`flex-1 py-4 rounded-xl font-bold text-white transition-all transform hover:scale-105 ${
+                    type === 'income'
+                      ? 'bg-green-600 hover:bg-green-700 shadow-lg'
+                      : 'bg-red-600 hover:bg-red-700 shadow-lg'
+                  }`}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Saving...
+                    </div>
+                  ) : (
+                    `${isEditing ? 'Update' : 'Add'} ${type === 'income' ? 'Income' : 'Expense'}`
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
