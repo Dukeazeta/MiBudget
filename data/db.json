@@ -1,0 +1,16 @@
+{
+  "settings": {
+    "id": "default",
+    "created_at": 1758736066001,
+    "updated_at": 1758736066001,
+    "deleted": false,
+    "currency_code": "USD",
+    "reveal_day": 6,
+    "hide_balance": true,
+    "initial_balance_cents": 0
+  },
+  "categories": [],
+  "transactions": [],
+  "budgets": [],
+  "goals": []
+}
