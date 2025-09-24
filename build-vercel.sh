@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Install dependencies with pnpm
-echo "Installing dependencies with pnpm..."
-pnpm install
-
 # Build shared package first
 echo "Building shared package..."
 pnpm --filter @mibudget/shared build

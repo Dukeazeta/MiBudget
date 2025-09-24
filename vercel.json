@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "./build-vercel.sh",
   "outputDirectory": "apps/web/dist",
-  "installCommand": null,
+  "installCommand": "npm install -g pnpm && pnpm install",
   "routes": [
     {
       "handle": "filesystem"
