@@ -103,9 +103,12 @@ export const useAppStore = create<AppStore>()(
           const balance = calculateBalance(newTransactions);
           set({ transactions: newTransactions, balance });
           
-          // Trigger sync in background
+          // Trigger sync in background (don't wait for it)
           if (navigator.onLine) {
-            get().triggerSync();
+            get().triggerSync().catch(error => {
+              console.warn('[Store] Background sync failed:', error.message);
+              // Don't throw - continue with offline operation
+            });
           }
           
           return transaction;
@@ -128,9 +131,11 @@ export const useAppStore = create<AppStore>()(
           const balance = calculateBalance(newTransactions);
           set({ transactions: newTransactions, balance });
           
-          // Trigger sync in background
+          // Trigger sync in background (don't wait for it)
           if (navigator.onLine) {
-            get().triggerSync();
+            get().triggerSync().catch(error => {
+              console.warn('[Store] Background sync failed:', error.message);
+            });
           }
         } catch (error) {
           console.error('Failed to update transaction:', error);
@@ -149,9 +154,11 @@ export const useAppStore = create<AppStore>()(
           const balance = calculateBalance(newTransactions);
           set({ transactions: newTransactions, balance });
           
-          // Trigger sync in background
+          // Trigger sync in background (don't wait for it)
           if (navigator.onLine) {
-            get().triggerSync();
+            get().triggerSync().catch(error => {
+              console.warn('[Store] Background sync failed:', error.message);
+            });
           }
         } catch (error) {
           console.error('Failed to delete transaction:', error);

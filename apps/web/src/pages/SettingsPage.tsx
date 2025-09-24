@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useAppStore } from '../stores/appStoreWithDB';
+import { db } from '../services/database';
 import { Logo } from '../components/Logo';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { DAYS_OF_WEEK, formatMoney } from '@mibudget/shared';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
-  const { transactions, categories, budgets, goals, isOnline, isSyncing, balance } = useAppStore();
+  const { transactions, categories, budgets, goals, isOnline, isSyncing, balance, createTransaction } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
@@ -72,6 +73,42 @@ export function SettingsPage() {
     // This would need to be implemented in the store
     console.warn('Delete all data not implemented yet');
     setShowDeleteConfirm(false);
+  };
+
+  const handleDebugDatabase = async () => {
+    try {
+      const data = await db.exportData();
+      console.log('Database Export:', data);
+      const transactionCount = (data.transactions || []).filter((t: any) => !t.deleted).length;
+      const outboxCount = (data.outbox || []).filter((o: any) => !o.synced).length;
+      alert(
+        `Debug Info:\n` +
+        `Active Transactions: ${transactionCount}\n` +
+        `Total Transactions: ${data.transactions?.length || 0}\n` +
+        `Unsynced Items: ${outboxCount}\n` +
+        `Check console for full data export`
+      );
+    } catch (error) {
+      console.error('Database debug failed:', error);
+      alert('Failed to debug database. See console for details.');
+    }
+  };
+
+  const handleTestTransaction = async () => {
+    try {
+      await createTransaction({
+        type: 'expense',
+        amount_cents: 500,
+        description: 'Test transaction ' + new Date().toLocaleTimeString(),
+        occurred_at: new Date().toISOString(),
+        category_id: undefined,
+        goal_id: undefined,
+      });
+      alert('Test transaction created!');
+    } catch (error) {
+      console.error('Failed to create test transaction:', error);
+      alert('Failed to create test transaction. See console for details.');
+    }
   };
 
   const totalTransactions = transactions.filter(t => !t.deleted).length;
@@ -251,6 +288,27 @@ export function SettingsPage() {
                 >
                   Export
                 </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">Debug Database</h3>
+                  <p className="text-sm text-gray-500">Inspect IndexedDB contents and outbox</p>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleDebugDatabase}
+                    className="px-3 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-900 focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-colors"
+                  >
+                    Dump DB
+                  </button>
+                  <button
+                    onClick={handleTestTransaction}
+                    className="px-3 py-2 bg-gray-700 text-white text-sm font-medium rounded-md hover:bg-gray-800 focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-colors"
+                  >
+                    Add Test Txn
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">

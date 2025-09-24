@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Transaction } from '@mibudget/shared';
 import { useAppStore } from '../stores/appStoreWithDB';
+import { ResponsiveAmount } from './ResponsiveAmount';
 
 interface TransactionListItemProps {
   transaction: Transaction;
@@ -42,12 +43,15 @@ export function TransactionListItem({
     <div className="flex items-center justify-between p-4 bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
       <div className="flex items-center space-x-4 flex-1">
         {/* Amount */}
-        <div className="flex-shrink-0">
-          <div className={`text-lg font-semibold ${
-            isIncome ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {isIncome ? '+' : '-'}${amount.toFixed(2)}
-          </div>
+        <div className="flex-shrink-0 min-w-0 max-w-[120px]">
+          <ResponsiveAmount
+            amount={amount.toFixed(2)}
+            maxSize="lg"
+            minSize="sm"
+            prefix={isIncome ? '+$' : '-$'}
+            color={isIncome ? 'text-green-600' : 'text-red-600'}
+            className="text-right"
+          />
         </div>
 
         {/* Transaction Details */}

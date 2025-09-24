@@ -39,9 +39,17 @@ export class MiBudgetDatabase extends Dexie {
   // Sync tables
   outbox!: Table<OutboxItem>;
   syncState!: Table<SyncState>;
+  
+  // Cross-tab synchronization
+  private broadcastChannel: BroadcastChannel;
+  private eventListeners: Set<(event: any) => void> = new Set();
 
   constructor() {
     super('MiBudgetDB');
+    
+    // Initialize cross-tab communication
+    this.broadcastChannel = new BroadcastChannel('mibudget-db-sync');
+    this.broadcastChannel.addEventListener('message', this.handleCrossTabMessage.bind(this));
     
     this.version(1).stores({
       settings: 'id, updated_at, deleted',
@@ -88,6 +96,9 @@ export class MiBudgetDatabase extends Dexie {
         retryCount: 0,
       });
       
+      // Notify other tabs
+      this.notifyOtherTabs(entity, 'create', item.id, item);
+      
       return item;
     });
   }
@@ -115,6 +126,9 @@ export class MiBudgetDatabase extends Dexie {
         synced: false,
         retryCount: 0,
       });
+      
+      // Notify other tabs
+      this.notifyOtherTabs(entity, 'update', id, updated);
       
       return updated as T;
     });
@@ -309,15 +323,55 @@ export class MiBudgetDatabase extends Dexie {
 
   // Data export/import for debugging
   async exportData() {
-    return {
-      settings: await this.settings.toArray(),
-      categories: await this.categories.toArray(),
-      transactions: await this.transactions.toArray(),
-      budgets: await this.budgets.toArray(),
-      goals: await this.goals.toArray(),
-      outbox: await this.outbox.toArray(),
-      syncState: await this.syncState.toArray(),
-    };
+    // Use a single read-only transaction to ensure consistent snapshot
+    return this.transaction('r', [
+      this.settings,
+      this.categories, 
+      this.transactions,
+      this.budgets,
+      this.goals,
+      this.outbox,
+      this.syncState
+    ], async () => {
+      const exportTimestamp = now();
+      const exportId = generateId();
+      
+      console.log(`[Export ${exportId}] Starting atomic export at ${exportTimestamp}`);
+      
+      const data = {
+        // Export metadata for consistency verification
+        metadata: {
+          exportId,
+          exportedAt: exportTimestamp,
+          version: '1.0.0',
+          schemaVersion: 1,
+          counts: {} as Record<string, number>
+        },
+        // Data stores
+        settings: await this.settings.toArray(),
+        categories: await this.categories.toArray(),
+        transactions: await this.transactions.toArray(),
+        budgets: await this.budgets.toArray(),
+        goals: await this.goals.toArray(),
+        outbox: await this.outbox.toArray(),
+        syncState: await this.syncState.toArray(),
+      };
+      
+      // Add counts for verification
+      data.metadata.counts = {
+        settings: data.settings.length,
+        categories: data.categories.length,
+        transactions: data.transactions.length,
+        budgets: data.budgets.length,
+        goals: data.goals.length,
+        outbox: data.outbox.length,
+        syncState: data.syncState.length
+      };
+      
+      console.log(`[Export ${exportId}] Completed - counts:`, data.metadata.counts);
+      
+      return data;
+    });
   }
 
   async clearAllData(): Promise<void> {
@@ -338,6 +392,55 @@ export class MiBudgetDatabase extends Dexie {
       await this.outbox.clear();
       await this.syncState.clear();
     });
+  }
+
+  // Cross-tab synchronization methods
+  private handleCrossTabMessage = (event: MessageEvent) => {
+    const { type, entity, operation, id } = event.data;
+    
+    if (type === 'db-change') {
+      console.log(`[Cross-tab] Received ${operation} on ${entity}:`, id);
+      
+      // Notify all registered listeners
+      this.eventListeners.forEach(listener => {
+        try {
+          listener(event.data);
+        } catch (error) {
+          console.error('[Cross-tab] Event listener error:', error);
+        }
+      });
+    }
+  };
+  
+  private notifyOtherTabs(entity: string, operation: string, id: string, payload?: any) {
+    try {
+      this.broadcastChannel.postMessage({
+        type: 'db-change',
+        entity,
+        operation,
+        id,
+        payload: payload ? { id: payload.id, updated_at: payload.updated_at } : null,
+        timestamp: now()
+      });
+    } catch (error) {
+      console.warn('[Cross-tab] Failed to notify other tabs:', error);
+    }
+  }
+  
+  // Register event listener for cross-tab updates
+  onCrossTabUpdate(listener: (event: any) => void): () => void {
+    this.eventListeners.add(listener);
+    
+    // Return cleanup function
+    return () => {
+      this.eventListeners.delete(listener);
+    };
+  }
+  
+  // Cleanup method
+  destroy() {
+    this.broadcastChannel.close();
+    this.eventListeners.clear();
   }
 }
 

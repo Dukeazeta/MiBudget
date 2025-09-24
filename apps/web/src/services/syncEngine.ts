@@ -71,7 +71,16 @@ export class SyncEngine {
     }
 
     if (!navigator.onLine) {
+      console.log('[Sync] Skipped - device is offline');
       return { success: false, error: 'Offline', itemsSynced: 0, itemsPulled: 0, lastSync: 0 };
+    }
+
+    // Quick server availability check
+    try {
+      await apiClient.health();
+    } catch (error) {
+      console.warn('[Sync] Server unavailable, operating in offline mode');
+      return { success: false, error: 'Server unavailable', itemsSynced: 0, itemsPulled: 0, lastSync: 0 };
     }
 
     this.isSyncing = true;
@@ -96,10 +105,14 @@ export class SyncEngine {
         push: this.groupItemsByEntity(itemsToSync),
       };
 
-      console.log('Syncing with server:', {
+      const syncSessionId = `sync-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log(`[${syncSessionId}] Starting sync session:`, {
         clientId: syncState.clientId,
         outboxItems: itemsToSync.length,
-        since: syncState.lastSync,
+        since: new Date(syncState.lastSync).toISOString(),
+        force: options.force || false,
+        maxRetries: maxRetries
       });
 
       // Send to server
@@ -119,10 +132,11 @@ export class SyncEngine {
         lastFullSync: response.server_time,
       });
 
-      console.log('Sync completed successfully:', {
+      console.log(`[${syncSessionId}] Sync completed successfully:`, {
         itemsSynced: itemsToSync.length,
         itemsPulled,
-        serverTime: response.server_time,
+        serverTime: new Date(response.server_time).toISOString(),
+        duration: Date.now() - parseInt(syncSessionId.split('-')[1])
       });
 
       return {

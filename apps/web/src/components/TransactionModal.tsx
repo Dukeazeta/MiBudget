@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../stores/appStoreWithDB';
 import { TransactionType } from '@mibudget/shared';
 import { LoadingSpinner } from './LoadingSpinner';
+import { ResponsiveAmount } from './ResponsiveAmount';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -110,25 +111,43 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
             </div>
 
             <form onSubmit={handleAmountSubmit} className="space-y-6">
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Allow only numbers and decimal point
-                    if (/^\d*\.?\d*$/.test(value)) {
-                      setAmount(value);
-                    }
-                  }}
-                  className="w-full text-4xl font-bold text-center bg-transparent border-none outline-none text-gray-900 placeholder-gray-300"
-                  placeholder="0"
-                  autoFocus
-                  required
-                />
-                <div className="text-center mt-2">
-                  <span className="text-lg text-gray-400">$</span>
+              <div className="relative px-4">
+                {/* Invisible measuring element */}
+                <div className="absolute inset-0 pointer-events-none opacity-0 flex items-center justify-center">
+                  <ResponsiveAmount
+                    amount={amount || '0'}
+                    maxSize="4xl"
+                    minSize="lg"
+                    prefix="$"
+                    className="text-center"
+                  />
+                </div>
+                
+                {/* Actual input - styled to match the measuring element */}
+                <div className="relative">
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 text-2xl sm:text-3xl md:text-4xl font-bold text-gray-400 pointer-events-none opacity-100">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only numbers and decimal point
+                      if (/^\d*\.?\d*$/.test(value)) {
+                        setAmount(value);
+                      }
+                    }}
+                    className={`w-full font-bold text-center bg-transparent border-none outline-none text-gray-900 placeholder-gray-300 pl-8 ${
+                      amount && amount.length > 8 ? 'text-lg' :
+                      amount && amount.length > 6 ? 'text-2xl' :
+                      amount && amount.length > 4 ? 'text-3xl' : 'text-4xl'
+                    }`}
+                    placeholder="0"
+                    autoFocus
+                    required
+                  />
                 </div>
               </div>
 
@@ -173,10 +192,15 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
               </button>
               
               <div className="text-center mb-6">
-                <div className={`text-3xl font-bold mb-2 ${
-                  type === 'income' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  ${parseFloat(amount || '0').toFixed(2)}
+                <div className="px-4">
+                  <ResponsiveAmount
+                    amount={parseFloat(amount || '0').toFixed(2)}
+                    maxSize="3xl"
+                    minSize="lg"
+                    prefix="$"
+                    color={type === 'income' ? 'text-green-600' : 'text-red-600'}
+                    className="text-center mb-2"
+                  />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">
                   {type === 'income' ? 'From where?' : 'For what?'}
