@@ -4,10 +4,10 @@
   "description": "Personal finance tracker with offline support",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@8.0.0",
+  "packageManager": "pnpm@latest",
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=6.0.0"
   },
   "scripts": {
     "dev": "concurrently \"pnpm --filter mibudget-server start\" \"pnpm --filter mibudget-web dev\"",

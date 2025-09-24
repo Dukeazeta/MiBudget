@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "./build-vercel.sh",
+  "buildCommand": "bash build-vercel.sh",
   "outputDirectory": "apps/web/dist",
-  "installCommand": "npm install -g pnpm && pnpm install",
+  "installCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install",
   "routes": [
     {
       "handle": "filesystem"
