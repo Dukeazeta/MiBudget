@@ -3,7 +3,7 @@
   "framework": null,
   "buildCommand": "pnpm --filter @mibudget/shared build && pnpm --filter mibudget-web build",
   "outputDirectory": "apps/web/dist",
-  "installCommand": "npm install -g pnpm@latest && pnpm install --frozen-lockfile",
+  "installCommand": "npm install -g pnpm@latest && pnpm install",
   "routes": [
     {
       "handle": "filesystem"
