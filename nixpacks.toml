@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs-18_x", "pnpm"]
+
+[phases.install]
+cmd = "pnpm install"
+
+[phases.build]
+cmd = "pnpm --filter shared build && pnpm --filter db build && pnpm --filter mibudget-server build"
+
+[start]
+cmd = "pnpm --filter mibudget-server start"

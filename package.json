@@ -4,12 +4,19 @@
   "description": "Personal finance tracker with offline support",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@8.0.0",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
   },
   "scripts": {
     "dev": "concurrently \"pnpm --filter mibudget-server start\" \"pnpm --filter mibudget-web dev\"",
     "build": "pnpm --filter shared build && pnpm --filter db build && pnpm --filter mibudget-server build && pnpm --filter mibudget-web build",
+    "build:server": "npm run build:shared && npm run build:db && npm run build:server-only",
+    "build:shared": "cd packages/shared && npm run build",
+    "build:db": "cd packages/db && npm run build",
+    "build:server-only": "cd apps/server && npm run build",
+    "start": "cd apps/server && npm start",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "format": "prettier --write .",

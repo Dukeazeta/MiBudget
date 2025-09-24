@@ -1,0 +1,31 @@
+# Railpack configuration for MiBudget monorepo
+version: 2
+
+# Package manager configuration  
+packageManager: "pnpm"
+
+# Node.js version
+nodeVersion: "18"
+
+# Environment variables
+env:
+  NODE_VERSION: "18.20.8"
+  PNPM_VERSION: "8"
+  
+# Build phases
+phases:
+  setup:
+    # Ensure pnpm is available
+    cmd: "corepack enable && corepack prepare pnpm@8 --activate"
+    
+  install:
+    # Install all workspace dependencies
+    cmd: "pnpm install --frozen-lockfile"
+    
+  build:
+    # Build shared packages first, then server
+    cmd: "pnpm --filter shared build && pnpm --filter db build && pnpm --filter mibudget-server build"
+
+# Start command
+start:
+  cmd: "pnpm --filter mibudget-server start"

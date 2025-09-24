@@ -1,25 +1,15 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "apps/web/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "buildCommand": "./build-vercel.sh",
+  "outputDirectory": "apps/web/dist",
+  "installCommand": null,
   "routes": [
     {
       "handle": "filesystem"
     },
     {
       "src": "/.*",
-      "dest": "/apps/web/dist/index.html"
+      "dest": "/index.html"
     }
-  ],
-  "buildCommand": "pnpm install && pnpm --filter @mibudget/shared build && pnpm --filter mibudget-web build",
-  "devCommand": "cd apps/web && pnpm dev",
-  "installCommand": "pnpm install",
-  "outputDirectory": "apps/web/dist"
+  ]
 }
