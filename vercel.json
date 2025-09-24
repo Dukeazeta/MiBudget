@@ -1,8 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "bash build-vercel.sh",
+  "framework": null,
+  "buildCommand": "pnpm --filter @mibudget/shared build && pnpm --filter mibudget-web build",
   "outputDirectory": "apps/web/dist",
-  "installCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install",
+  "installCommand": "npm install -g pnpm@latest && pnpm install --frozen-lockfile",
   "routes": [
     {
       "handle": "filesystem"
