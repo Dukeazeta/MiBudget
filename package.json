@@ -1,43 +1,32 @@
 {
-  "name": "mibudget",
+  "name": "mibudget-nextjs",
   "version": "0.1.0",
-  "description": "Personal finance tracker with offline support",
   "private": true,
-  "type": "module",
-  "packageManager": "pnpm@latest",
-  "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=6.0.0"
-  },
   "scripts": {
-    "dev": "concurrently \"pnpm --filter mibudget-server start\" \"pnpm --filter mibudget-web dev\"",
-    "build": "pnpm --filter shared build && pnpm --filter db build && pnpm --filter mibudget-server build && pnpm --filter mibudget-web build",
-    "build:server": "npm run build:shared && npm run build:db && npm run build:server-only",
-    "build:shared": "cd packages/shared && npm run build",
-    "build:db": "cd packages/db && npm run build",
-    "build:server-only": "cd apps/server && npm run build",
-    "start": "cd apps/server && npm start",
-    "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
-    "format": "prettier --write .",
-    "prepare": "husky install"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dexie": "^4.2.0",
+    "next": "15.5.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-router-dom": "^7.9.2",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.14.0",
-    "@typescript-eslint/parser": "^6.14.0",
-    "concurrently": "^8.2.2",
-    "eslint": "^8.55.0",
-    "eslint-config-prettier": "^9.1.0",
-    "husky": "^8.0.3",
-    "lint-staged": "^15.2.0",
-    "prettier": "^3.1.1",
-    "typescript": "^5.3.3"
-  },
-  "lint-staged": {
-    "*.{js,ts,tsx,json,md}": [
-      "prettier --write",
-      "eslint --fix"
-    ]
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
