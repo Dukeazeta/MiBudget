@@ -1,14 +1,3 @@
-// Re-export the app store with database integration as appDataStore
+// Re-export the main app store as appDataStore for backward compatibility
 // This provides a consistent interface for components to use
-import { useAppStore } from './appStoreWithDB';
-
-// Create aliases for method names to match component expectations
-export const useAppDataStore = () => {
-  const store = useAppStore();
-  
-  return {
-    ...store,
-    // Alias createTransaction to addTransaction for component consistency
-    addTransaction: store.createTransaction,
-  };
-};
+export { useAppStore as useAppDataStore } from './appStoreWithDB';

@@ -1,12 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { 
-  Transaction, 
-  Category, 
-  Budget, 
-  Goal, 
-  calculateBalance 
-} from '@mibudget/shared';
+import { Transaction, Category, Budget, Goal, Settings } from '@/lib/types';
+import { calculateBalance } from '@/lib/utils';
 
 interface AppStore {
   // Data
@@ -22,9 +17,11 @@ interface AppStore {
   
   // Computed
   balance: number;
+  initialBalance: number;
   
   // Actions
-  setTransactions: (transactions: Transaction[]) => void;
+  setTransactions: (transactions: Transaction[], initialBalance?: number) => void;
+  setInitialBalance: (initialBalance: number) => void;
   addTransaction: (transaction: Transaction) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
@@ -67,19 +64,31 @@ export const useAppStore = create<AppStore>()(
       isLoading: false,
       lastSync: 0,
       balance: 0,
+      initialBalance: 0,
 
       // Transaction actions
-      setTransactions: (transactions: Transaction[]) => {
+      setTransactions: (transactions: Transaction[], initialBalance?: number) => {
         set({ transactions });
-        // Recalculate balance
-        const balance = calculateBalance(transactions);
+        // Recalculate balance with initial balance
+        const currentInitialBalance = initialBalance ?? get().initialBalance;
+        const balance = calculateBalance(transactions, currentInitialBalance);
+        set({ balance });
+        if (initialBalance !== undefined) {
+          set({ initialBalance });
+        }
+      },
+
+      setInitialBalance: (initialBalance: number) => {
+        set({ initialBalance });
+        // Recalculate balance with new initial balance
+        const balance = calculateBalance(get().transactions, initialBalance);
         set({ balance });
       },
 
       addTransaction: (transaction: Transaction) => {
         const transactions = [...get().transactions, transaction];
         set({ transactions });
-        const balance = calculateBalance(transactions);
+        const balance = calculateBalance(transactions, get().initialBalance);
         set({ balance });
       },
 
@@ -88,14 +97,14 @@ export const useAppStore = create<AppStore>()(
           t.id === id ? { ...t, ...updates } : t
         );
         set({ transactions });
-        const balance = calculateBalance(transactions);
+        const balance = calculateBalance(transactions, get().initialBalance);
         set({ balance });
       },
 
       deleteTransaction: (id: string) => {
         const transactions = get().transactions.filter(t => t.id !== id);
         set({ transactions });
-        const balance = calculateBalance(transactions);
+        const balance = calculateBalance(transactions, get().initialBalance);
         set({ balance });
       },
 
@@ -166,8 +175,8 @@ export const useAppStore = create<AppStore>()(
 
       // Selectors
       getBalance: () => {
-        const { transactions } = get();
-        return calculateBalance(transactions);
+        const { transactions, initialBalance } = get();
+        return calculateBalance(transactions, initialBalance);
       },
 
       getCategoryById: (id: string) => {

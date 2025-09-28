@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSettingsStore } from '../stores/settingsStore';
-import { useAppStore } from '../stores/appStoreWithDB';
-import { Logo } from '../components/Logo';
-import { DAYS_OF_WEEK, generateId, now, formatMoney, parseMoney } from '@mibudget/shared';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useAppStore } from '@/stores/appStoreWithDB';
+import { Logo } from '@/components/Logo';
+import { DAYS_OF_WEEK, generateId, now, parseMoney, getCurrencySymbol } from '@/lib/utils';
 
 export default function Page() {
   const router = useRouter();
@@ -25,18 +25,14 @@ export default function Page() {
       const balanceCents = parseMoney(balance);
       const timestamp = now();
       
-      // Create settings
-      const settings = {
-        id: 'default',
-        created_at: timestamp,
-        updated_at: timestamp,
-        deleted: false,
+      // Save settings
+      await updateSettings({
         currency_code: currency,
         reveal_day: revealDay,
         hide_balance: true,
         initial_balance_cents: balanceCents,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      };
+      });
       
       // Create initial balance transaction for traceability
       const initialTransaction = {
@@ -49,15 +45,6 @@ export default function Page() {
         description: 'Initial balance',
         occurred_at: new Date().toISOString(),
       };
-
-      // Save settings and transaction
-      await updateSettings({
-        currency_code: currency,
-        reveal_day: revealDay,
-        hide_balance: true,
-        initial_balance_cents: balanceCents,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
       
       await createTransaction(initialTransaction);
 
@@ -71,120 +58,119 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="mb-4 flex justify-center">
-            <Logo size="lg" />
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Hero Section */}
+      <main className="flex-1 flex flex-col justify-center px-6 py-16 max-w-lg mx-auto w-full">
+        {/* Logo and Brand */}
+        <div className="text-center mb-16">
+          <div className="mb-8">
+            <Logo size="xl" className="w-20 h-20 mx-auto" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to MiBudget</h1>
-          <p className="text-gray-600 text-balance">Let's get started by setting up your current balance</p>
+          <h1 className="text-6xl font-black text-gray-900 mb-4 leading-none">
+            Mi<span className="text-blue-600">Budget</span>
+          </h1>
+          <p className="text-xl font-medium text-gray-600 leading-relaxed">
+            Simple. Private. Powerful.
+          </p>
         </div>
 
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="balance" className="block text-sm font-medium text-gray-700 mb-2">
-                Current Balance
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 text-sm">{currency === 'USD' ? '$' : currency}</span>
-                </div>
-                <input
-                  type="text"
-                  id="balance"
-                  value={balance}
-                  onChange={(e) => setBalance(e.target.value)}
-                  placeholder="0.00"
-                  className="input pl-8"
-                  required
-                />
+        {/* Setup Form */}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Balance Input */}
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              What's your current balance?
+            </h2>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-6 pointer-events-none">
+                <span className="text-gray-400 text-2xl font-medium">{getCurrencySymbol(currency)}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Enter your current total balance across all accounts</p>
+              <input
+                type="text"
+                id="balance"
+                value={balance}
+                onChange={(e) => setBalance(e.target.value)}
+                placeholder="0.00"
+                className="w-full pl-14 pr-6 py-4 text-3xl font-bold text-center bg-gray-50 border-2 border-gray-200 rounded-2xl focus:border-blue-600 focus:bg-white outline-none transition-all"
+                required
+                autoFocus
+              />
             </div>
-
-            <div>
-              <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
-                Currency
-              </label>
+            <div className="mt-4 flex justify-center">
               <select
                 id="currency"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="input"
+                className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl font-medium text-gray-700 focus:bg-white focus:border-blue-600 outline-none transition-all"
               >
-                <option value="USD">USD - US Dollar</option>
-                <option value="EUR">EUR - Euro</option>
-                <option value="GBP">GBP - British Pound</option>
-                <option value="JPY">JPY - Japanese Yen</option>
-                <option value="CAD">CAD - Canadian Dollar</option>
-                <option value="AUD">AUD - Australian Dollar</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="NGN">NGN (₦)</option>
+                <option value="JPY">JPY (¥)</option>
+                <option value="CAD">CAD ($)</option>
+                <option value="AUD">AUD ($)</option>
               </select>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="revealDay" className="block text-sm font-medium text-gray-700 mb-2">
-                Balance Reveal Day
-              </label>
-              <select
-                id="revealDay"
-                value={revealDay}
-                onChange={(e) => setRevealDay(Number(e.target.value))}
-                className="input"
-              >
-                {DAYS_OF_WEEK.map((day, index) => (
-                  <option key={day} value={index}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Your balance will only be visible on this day each week
+          {/* Privacy Setting */}
+          <div className="bg-gray-50 rounded-2xl p-6">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a2 2 0 002 2zM13 10V9a1 1 0 00-1-1h-1a1 1 0 00-1 1v1a1 1 0 001 1h1a1 1 0 001-1z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                Choose your reveal day
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Your balance will only show on this day each week
               </p>
             </div>
-
-            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <svg className="w-5 h-5 text-primary-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-sm">
-                  <p className="text-primary-800 font-medium">Privacy by Design</p>
-                  <p className="text-primary-700 mt-1">
-                    Your balance will be hidden most of the time to help reduce financial anxiety. 
-                    You can always check your spending through individual transactions.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!balance.trim() || isLoading}
-              className="btn btn-primary btn-lg w-full"
+            
+            <select
+              id="revealDay"
+              value={revealDay}
+              onChange={(e) => setRevealDay(Number(e.target.value))}
+              className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl font-medium text-gray-700 focus:border-blue-600 outline-none transition-all"
             >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75" />
-                  </svg>
-                  Setting up...
-                </div>
-              ) : (
-                'Get Started'
-              )}
-            </button>
-          </form>
-        </div>
+              {DAYS_OF_WEEK.map((day, index) => (
+                <option key={day} value={index}>
+                  {day}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="text-center mt-6">
-          <p className="text-xs text-gray-500">
-            This app works offline-first. Your data is stored locally and synced when you're online.
+          {/* Action Button */}
+          <button
+            type="submit"
+            disabled={!balance.trim() || isLoading}
+            className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-2xl transition-colors text-lg"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <svg className="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75" />
+                </svg>
+                Setting up...
+              </div>
+            ) : (
+              'Start Budgeting'
+            )}
+          </button>
+        </form>
+
+        {/* Footer */}
+        <div className="text-center mt-12">
+          <p className="text-sm text-gray-500">
+            Offline-first • Privacy by design • Your data stays local
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

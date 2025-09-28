@@ -2,12 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useAppStore } from '../stores/appStoreWithDB';
-import { useSettingsStore } from '../stores/settingsStore';
-import { TransactionModal } from '../components/TransactionModal';
-import { TransactionList } from '../components/TransactionList';
-import { Logo } from '../components/Logo';
-import { TransactionType } from '@mibudget/shared';
+import { useAppStore } from '@/stores/appStoreWithDB';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { TransactionModal } from '@/components/TransactionModal';
+import { TransactionList } from '@/components/TransactionList';
+import { Logo } from '@/components/Logo';
+import { TransactionType } from '@/lib/types';
 
 export default function Page() {
   const { transactions, categories, isOnline, isSyncing } = useAppStore();
@@ -34,9 +34,9 @@ export default function Page() {
       .filter(transaction => {
         // Transaction type filter
         if (transactionType === 'income') {
-          return transaction.amount_cents > 0;
+          return transaction.type === 'income' || transaction.type === 'adjustment';
         } else if (transactionType === 'expense') {
-          return transaction.amount_cents < 0;
+          return transaction.type === 'expense';
         }
         return true;
       })

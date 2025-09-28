@@ -1,0 +1,48 @@
+{
+  "name": "MiBudget - Simple Budget Tracking",
+  "short_name": "MiBudget",
+  "description": "A minimal, privacy-focused budget tracker that works offline. Track your spending without the anxiety.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f2937",
+  "orientation": "portrait-primary",
+  "categories": ["finance", "productivity", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Add Transaction",
+      "short_name": "Add",
+      "description": "Quickly add a new transaction",
+      "url": "/transactions?action=add",
+      "icons": []
+    },
+    {
+      "name": "View Balance",
+      "short_name": "Balance",
+      "description": "Check your current balance",
+      "url": "/dashboard",
+      "icons": []
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

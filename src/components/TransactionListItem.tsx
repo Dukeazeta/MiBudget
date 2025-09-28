@@ -1,7 +1,12 @@
+'use client';
+
 import { useState } from 'react';
-import { Transaction } from '@mibudget/shared';
-import { useAppStore } from '../stores/appStoreWithDB';
+import { Transaction } from '@/lib/types';
+import { useAppStore } from '@/stores/appStoreWithDB';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { ResponsiveAmount } from './ResponsiveAmount';
+import { getCurrencySymbol } from '@/lib/utils';
+import { formatDate } from '@/lib/dateUtils';
 
 interface TransactionListItemProps {
   transaction: Transaction;
@@ -15,12 +20,14 @@ export function TransactionListItem({
   showPendingBadge = false 
 }: TransactionListItemProps) {
   const { deleteTransaction } = useAppStore();
+  const { settings } = useSettingsStore();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isIncome = transaction.type === 'income' || transaction.type === 'adjustment';
   const amount = transaction.amount_cents / 100;
-  const date = new Date(transaction.occurred_at).toLocaleDateString();
+  const date = formatDate.display(transaction.occurred_at);
+  const currencySymbol = settings ? getCurrencySymbol(settings.currency_code) : '$';
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -28,7 +35,8 @@ export function TransactionListItem({
       await deleteTransaction(transaction.id);
     } catch (error) {
       console.error('Failed to delete transaction:', error);
-      // TODO: Show error toast
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete transaction';
+      // TODO: Add toast.error('Delete Failed', errorMessage);
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -48,7 +56,7 @@ export function TransactionListItem({
             amount={amount.toFixed(2)}
             maxSize="lg"
             minSize="sm"
-            prefix={isIncome ? '+$' : '-$'}
+            prefix={isIncome ? `+${currencySymbol}` : `-${currencySymbol}`}
             color={isIncome ? 'text-green-600' : 'text-red-600'}
             className="text-right"
           />

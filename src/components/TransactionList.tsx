@@ -1,7 +1,10 @@
+'use client';
+
 import { useState } from 'react';
-import { Transaction } from '@mibudget/shared';
+import { Transaction } from '@/lib/types';
 import { TransactionListItem } from './TransactionListItem';
 import { TransactionModal } from './TransactionModal';
+import { formatDate } from '@/lib/dateUtils';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -25,21 +28,49 @@ export function TransactionList({
     type: 'income' | 'expense';
   } | null>(null);
 
-  // Group transactions by date
+  // Group transactions by date with error handling
   const groupedTransactions = transactions
     .slice(0, limit) // Apply limit if provided
     .reduce<GroupedTransactions>((groups, transaction) => {
-      const date = new Date(transaction.occurred_at).toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
+      try {
+        const dateObj = new Date(transaction.occurred_at);
+        // Check if the date is valid
+        if (isNaN(dateObj.getTime())) {
+          console.warn('Invalid date in transaction:', transaction.id, transaction.occurred_at);
+          return groups; // Skip this transaction
+        }
+        
+        const date = dateObj.toDateString();
+        if (!groups[date]) {
+          groups[date] = [];
+        }
+        groups[date].push(transaction);
+        return groups;
+      } catch (error) {
+        console.warn('Failed to process transaction date:', transaction.id, error);
+        return groups; // Skip this transaction
       }
-      groups[date].push(transaction);
-      return groups;
     }, {});
 
-  // Sort dates in descending order (most recent first)
+  // Sort dates in descending order (most recent first) with error handling
   const sortedDates = Object.keys(groupedTransactions).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+    (a, b) => {
+      try {
+        const dateA = new Date(a).getTime();
+        const dateB = new Date(b).getTime();
+        
+        // Check for invalid dates
+        if (isNaN(dateA) || isNaN(dateB)) {
+          console.warn('Invalid date encountered during sorting:', { a, b });
+          return 0; // Keep original order for invalid dates
+        }
+        
+        return dateB - dateA;
+      } catch (error) {
+        console.warn('Error sorting dates:', error);
+        return 0;
+      }
+    }
   );
 
   const handleEdit = (transactionId: string, type: 'income' | 'expense') => {
@@ -51,25 +82,7 @@ export function TransactionList({
   };
 
 
-  const formatDateHeader = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    }
-  };
+  // Use the improved date formatting utility
 
   if (transactions.length === 0) {
     return (
@@ -91,13 +104,29 @@ export function TransactionList({
             {/* Date Header */}
             <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
               <h3 className="text-sm font-medium text-gray-900">
-                {formatDateHeader(date)}
+                {formatDate.header(date)}
               </h3>
             </div>
 
             {/* Transactions for this date */}
             {groupedTransactions[date]
-              .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
+              .sort((a, b) => {
+                try {
+                  const dateA = new Date(a.occurred_at).getTime();
+                  const dateB = new Date(b.occurred_at).getTime();
+                  
+                  // Check for invalid dates
+                  if (isNaN(dateA) || isNaN(dateB)) {
+                    console.warn('Invalid transaction date for sorting:', { a: a.occurred_at, b: b.occurred_at });
+                    return 0; // Keep original order
+                  }
+                  
+                  return dateB - dateA;
+                } catch (error) {
+                  console.warn('Error sorting transactions:', error);
+                  return 0;
+                }
+              })
               .map((transaction) => (
                 <TransactionListItem
                   key={transaction.id}

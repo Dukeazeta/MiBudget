@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useSettingsStore } from '../stores/settingsStore';
-import { useAppStore } from '../stores/appStoreWithDB';
-import { db } from '../services/database';
-import { Logo } from '../components/Logo';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { DAYS_OF_WEEK, formatMoney } from '@mibudget/shared';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useAppStore } from '@/stores/appStoreWithDB';
+import { database } from '@/lib/database';
+import { Logo } from '@/components/Logo';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { DAYS_OF_WEEK, formatMoney, getCurrencySymbol } from '@/lib/utils';
 
 export default function Page() {
   const { settings, updateSettings } = useSettingsStore();
@@ -72,22 +72,31 @@ export default function Page() {
   };
 
   const handleDeleteAllData = async () => {
-    // This would need to be implemented in the store
-    console.warn('Delete all data not implemented yet');
-    setShowDeleteConfirm(false);
+    setIsLoading(true);
+    try {
+      await database.clearAllData();
+      // Clear the stores as well
+      window.location.href = '/onboarding'; // Redirect to onboarding
+    } catch (error) {
+      console.error('Failed to delete all data:', error);
+      alert('Failed to delete all data. See console for details.');
+    } finally {
+      setIsLoading(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   const handleDebugDatabase = async () => {
     try {
-      const data = await db.exportData();
+      const data = await database.exportData();
       console.log('Database Export:', data);
       const transactionCount = (data.transactions || []).filter((t: any) => !t.deleted).length;
-      const outboxCount = (data.outbox || []).filter((o: any) => !o.synced).length;
       alert(
         `Debug Info:\n` +
         `Active Transactions: ${transactionCount}\n` +
         `Total Transactions: ${data.transactions?.length || 0}\n` +
-        `Unsynced Items: ${outboxCount}\n` +
+        `Settings: ${data.settings?.length || 0}\n` +
+        `Categories: ${data.categories?.length || 0}\n` +
         `Check console for full data export`
       );
     } catch (error) {
@@ -191,24 +200,27 @@ export default function Page() {
                 <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
                   Currency
                 </label>
-                <select
-                  id="currency"
-                  value={settings.currency_code}
-                  onChange={(e) => handleCurrencyChange(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                  <option value="GBP">GBP - British Pound</option>
-                  <option value="JPY">JPY - Japanese Yen</option>
-                  <option value="CAD">CAD - Canadian Dollar</option>
-                  <option value="AUD">AUD - Australian Dollar</option>
-                  <option value="CHF">CHF - Swiss Franc</option>
-                  <option value="SEK">SEK - Swedish Krona</option>
-                  <option value="NOK">NOK - Norwegian Krone</option>
-                  <option value="DKK">DKK - Danish Krone</option>
-                </select>
+                <div className="dropdown-light">
+                  <select
+                    id="currency"
+                    value={settings.currency_code}
+                    onChange={(e) => handleCurrencyChange(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  >
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="NGN">NGN - Nigerian Naira</option>
+                    <option value="JPY">JPY - Japanese Yen</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
+                    <option value="AUD">AUD - Australian Dollar</option>
+                    <option value="CHF">CHF - Swiss Franc</option>
+                    <option value="SEK">SEK - Swedish Krona</option>
+                    <option value="NOK">NOK - Norwegian Krone</option>
+                    <option value="DKK">DKK - Danish Krone</option>
+                  </select>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Current balance: {formatMoney(balance, settings.currency_code)}
                 </p>
@@ -225,19 +237,21 @@ export default function Page() {
                 <label htmlFor="revealDay" className="block text-sm font-medium text-gray-700 mb-2">
                   Balance Reveal Day
                 </label>
-                <select
-                  id="revealDay"
-                  value={settings.reveal_day}
-                  onChange={(e) => handleRevealDayChange(Number(e.target.value))}
-                  disabled={isLoading}
-                  className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {DAYS_OF_WEEK.map((day, index) => (
-                    <option key={day} value={index}>
-                      {day}
-                    </option>
-                  ))}
-                </select>
+                <div className="dropdown-light">
+                  <select
+                    id="revealDay"
+                    value={settings.reveal_day}
+                    onChange={(e) => handleRevealDayChange(Number(e.target.value))}
+                    disabled={isLoading}
+                    className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  >
+                    {DAYS_OF_WEEK.map((day, index) => (
+                      <option key={day} value={index}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Your balance will only be visible on {DAYS_OF_WEEK[settings.reveal_day]}s
                 </p>
@@ -355,7 +369,7 @@ export default function Page() {
               {!isOnline && (
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-600">
-                    You're currently offline. Your changes are being saved locally and will sync when you're back online.
+                You&apos;re currently offline. Your changes are being saved locally and will sync when you&apos;re back online.
                   </p>
                 </div>
               )}

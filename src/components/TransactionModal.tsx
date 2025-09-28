@@ -1,8 +1,12 @@
+'use client';
+
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../stores/appStoreWithDB';
-import { TransactionType } from '@mibudget/shared';
+import { useAppStore } from '@/stores/appStoreWithDB';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { TransactionType } from '@/lib/types';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ResponsiveAmount } from './ResponsiveAmount';
+import { getCurrencySymbol } from '@/lib/utils';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -15,12 +19,14 @@ type ModalStep = 'amount' | 'details';
 
 export function TransactionModal({ isOpen, onClose, type, transactionId }: TransactionModalProps) {
   const { transactions, createTransaction, updateTransaction } = useAppStore();
+  const { settings } = useSettingsStore();
   const [step, setStep] = useState<ModalStep>('amount');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
 
   const isEditing = !!transactionId;
+  const currencySymbol = settings ? getCurrencySymbol(settings.currency_code) : '$';
 
   useEffect(() => {
     if (isOpen) {
@@ -73,7 +79,8 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
       onClose();
     } catch (error) {
       console.error('Failed to save transaction:', error);
-      // TODO: Show error toast
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save transaction';
+      // TODO: Add toast.error('Save Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -118,7 +125,7 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
                     amount={amount || '0'}
                     maxSize="4xl"
                     minSize="lg"
-                    prefix="$"
+                    prefix={currencySymbol}
                     className="text-center"
                   />
                 </div>
@@ -126,7 +133,7 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
                 {/* Actual input - styled to match the measuring element */}
                 <div className="relative">
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 text-2xl sm:text-3xl md:text-4xl font-bold text-gray-400 pointer-events-none opacity-100">
-                    $
+                    {currencySymbol}
                   </span>
                   <input
                     type="text"
@@ -197,7 +204,7 @@ export function TransactionModal({ isOpen, onClose, type, transactionId }: Trans
                     amount={parseFloat(amount || '0').toFixed(2)}
                     maxSize="3xl"
                     minSize="lg"
-                    prefix="$"
+                    prefix={currencySymbol}
                     color={type === 'income' ? 'text-green-600' : 'text-red-600'}
                     className="text-center mb-2"
                   />

@@ -7,6 +7,24 @@ export const formatMoney = (cents: number, currencyCode = 'USD'): string => {
   return formatter.format(cents / 100);
 };
 
+// Get currency symbol
+export const getCurrencySymbol = (currencyCode: string): string => {
+  const symbols: Record<string, string> = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'NGN': '₦',
+    'JPY': '¥',
+    'CAD': 'C$',
+    'AUD': 'A$',
+    'CHF': 'CHF',
+    'SEK': 'kr',
+    'NOK': 'kr',
+    'DKK': 'kr',
+  };
+  return symbols[currencyCode] || currencyCode;
+};
+
 export const parseMoney = (amount: string): number => {
   // Remove currency symbols and parse to float, then convert to cents
   const cleaned = amount.replace(/[^\d.-]/g, '');
@@ -14,39 +32,15 @@ export const parseMoney = (amount: string): number => {
   return Math.round(dollars * 100);
 };
 
-// Date utilities
-export const DAYS_OF_WEEK = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-] as const;
-
-export const getDayOfWeek = (date: Date = new Date()): number => {
-  return date.getDay(); // 0=Sunday, 6=Saturday
-};
-
-export const isRevealDay = (revealDay: number, timezone?: string): boolean => {
-  const now = timezone 
-    ? new Date(new Date().toLocaleString('en-US', { timeZone: timezone }))
-    : new Date();
-  return getDayOfWeek(now) === revealDay;
-};
-
-export const getNextRevealDay = (revealDay: number, timezone?: string): Date => {
-  const now = timezone
-    ? new Date(new Date().toLocaleString('en-US', { timeZone: timezone }))
-    : new Date();
-  
-  const currentDay = getDayOfWeek(now);
-  const daysUntilReveal = (revealDay - currentDay + 7) % 7;
-  const nextReveal = new Date(now);
-  nextReveal.setDate(now.getDate() + (daysUntilReveal === 0 ? 7 : daysUntilReveal));
-  return nextReveal;
-};
+// Re-export date utilities from dateUtils
+export {
+  DAYS_OF_WEEK,
+  getDayOfWeek,
+  isRevealDay,
+  getNextRevealDay,
+  formatDate,
+  now as nowTimestamp,
+} from './dateUtils';
 
 // Generate UUID v4
 export const generateId = (): string => {
@@ -57,11 +51,11 @@ export const generateId = (): string => {
   });
 };
 
-// Get current timestamp in milliseconds
+// Get current timestamp in milliseconds (keep for backward compatibility)
 export const now = (): number => Date.now();
 
 // Balance calculation helper
-export const calculateBalance = (transactions: Array<{ amount_cents: number; type: string }>): number => {
+export const calculateBalance = (transactions: Array<{ amount_cents: number; type: string }>, initialBalanceCents: number = 0): number => {
   return transactions.reduce((total, transaction) => {
     switch (transaction.type) {
       case 'income':
@@ -74,5 +68,5 @@ export const calculateBalance = (transactions: Array<{ amount_cents: number; typ
       default:
         return total;
     }
-  }, 0);
+  }, initialBalanceCents);
 };

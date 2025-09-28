@@ -7,7 +7,7 @@ import {
   SyncRequest, 
   SyncResponse,
   ErrorResponse 
-} from '@mibudget/shared';
+} from '@/lib/types';
 
 export class ApiError extends Error {
   constructor(

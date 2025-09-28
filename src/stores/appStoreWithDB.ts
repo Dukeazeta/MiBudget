@@ -1,14 +1,8 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { 
-  Transaction, 
-  Category, 
-  Budget, 
-  Goal, 
-  calculateBalance 
-} from '@mibudget/shared';
-import { db } from '../services/database';
-import { syncEngine } from '../services/syncEngine';
+import { Transaction, Category, Budget, Goal, Settings } from '@/lib/types';
+import { calculateBalance } from '@/lib/utils';
+import { database } from '@/lib/database';
 
 interface AppStore {
   // Data
@@ -61,6 +55,7 @@ interface AppStore {
   
   // Computed selectors
   getBalance: () => number;
+  getBalanceWithInitial: (settings?: Settings | null) => Promise<number>;
   getCategoryById: (id: string) => Category | undefined;
   getGoalById: (id: string) => Goal | undefined;
 }
@@ -83,8 +78,9 @@ export const useAppStore = create<AppStore>()(
       loadTransactions: async () => {
         try {
           set({ isLoading: true });
-          const transactions = await db.transactions.where('deleted').equals(0).toArray();
-          const balance = calculateBalance(transactions);
+          const transactions = await database.getTransactions();
+          const settings = await database.getSettings();
+          const balance = calculateBalance(transactions, settings?.initial_balance_cents || 0);
           set({ transactions, balance });
         } catch (error) {
           console.error('Failed to load transactions:', error);
@@ -95,21 +91,14 @@ export const useAppStore = create<AppStore>()(
 
       createTransaction: async (transactionData) => {
         try {
-          const transaction = await db.createTransaction(transactionData);
+          const transaction = await database.createTransaction(transactionData);
           
           // Update state optimistically
           const currentTransactions = get().transactions;
           const newTransactions = [...currentTransactions, transaction];
-          const balance = calculateBalance(newTransactions);
+          const settings = await database.getSettings();
+          const balance = calculateBalance(newTransactions, settings?.initial_balance_cents || 0);
           set({ transactions: newTransactions, balance });
-          
-          // Trigger sync in background (don't wait for it)
-          if (navigator.onLine) {
-            get().triggerSync().catch(error => {
-              console.warn('[Store] Background sync failed:', error.message);
-              // Don't throw - continue with offline operation
-            });
-          }
           
           return transaction;
         } catch (error) {
@@ -120,7 +109,7 @@ export const useAppStore = create<AppStore>()(
 
       updateTransaction: async (id, updates) => {
         try {
-          const updated = await db.updateTransaction(id, updates);
+          const updated = await database.updateTransaction(id, updates);
           if (!updated) return;
           
           // Update state optimistically
@@ -128,15 +117,9 @@ export const useAppStore = create<AppStore>()(
           const newTransactions = currentTransactions.map(t => 
             t.id === id ? updated : t
           );
-          const balance = calculateBalance(newTransactions);
+          const settings = await database.getSettings();
+          const balance = calculateBalance(newTransactions, settings?.initial_balance_cents || 0);
           set({ transactions: newTransactions, balance });
-          
-          // Trigger sync in background (don't wait for it)
-          if (navigator.onLine) {
-            get().triggerSync().catch(error => {
-              console.warn('[Store] Background sync failed:', error.message);
-            });
-          }
         } catch (error) {
           console.error('Failed to update transaction:', error);
           throw error;
@@ -145,21 +128,15 @@ export const useAppStore = create<AppStore>()(
 
       deleteTransaction: async (id) => {
         try {
-          const success = await db.deleteTransaction(id);
+          const success = await database.deleteTransaction(id);
           if (!success) return;
           
           // Update state optimistically (remove from display)
           const currentTransactions = get().transactions;
           const newTransactions = currentTransactions.filter(t => t.id !== id);
-          const balance = calculateBalance(newTransactions);
+          const settings = await database.getSettings();
+          const balance = calculateBalance(newTransactions, settings?.initial_balance_cents || 0);
           set({ transactions: newTransactions, balance });
-          
-          // Trigger sync in background (don't wait for it)
-          if (navigator.onLine) {
-            get().triggerSync().catch(error => {
-              console.warn('[Store] Background sync failed:', error.message);
-            });
-          }
         } catch (error) {
           console.error('Failed to delete transaction:', error);
           throw error;
@@ -169,7 +146,7 @@ export const useAppStore = create<AppStore>()(
       // Category operations
       loadCategories: async () => {
         try {
-          const categories = await db.categories.where('deleted').equals(0).toArray();
+          const categories = await database.getCategories();
           set({ categories });
         } catch (error) {
           console.error('Failed to load categories:', error);
@@ -178,16 +155,11 @@ export const useAppStore = create<AppStore>()(
 
       createCategory: async (categoryData) => {
         try {
-          const category = await db.createCategory(categoryData);
+          const category = await database.createCategory(categoryData);
           
           // Update state optimistically
           const currentCategories = get().categories;
           set({ categories: [...currentCategories, category] });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
           
           return category;
         } catch (error) {
@@ -198,7 +170,7 @@ export const useAppStore = create<AppStore>()(
 
       updateCategory: async (id, updates) => {
         try {
-          const updated = await db.updateCategory(id, updates);
+          const updated = await database.updateCategory(id, updates);
           if (!updated) return;
           
           // Update state optimistically
@@ -207,11 +179,6 @@ export const useAppStore = create<AppStore>()(
             c.id === id ? updated : c
           );
           set({ categories: newCategories });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
         } catch (error) {
           console.error('Failed to update category:', error);
           throw error;
@@ -220,18 +187,13 @@ export const useAppStore = create<AppStore>()(
 
       deleteCategory: async (id) => {
         try {
-          const success = await db.deleteCategory(id);
+          const success = await database.deleteCategory(id);
           if (!success) return;
           
           // Update state optimistically
           const currentCategories = get().categories;
           const newCategories = currentCategories.filter(c => c.id !== id);
           set({ categories: newCategories });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
         } catch (error) {
           console.error('Failed to delete category:', error);
           throw error;
@@ -241,7 +203,7 @@ export const useAppStore = create<AppStore>()(
       // Budget operations
       loadBudgets: async () => {
         try {
-          const budgets = await db.budgets.where('deleted').equals(0).toArray();
+          const budgets = await database.getBudgets();
           set({ budgets });
         } catch (error) {
           console.error('Failed to load budgets:', error);
@@ -250,16 +212,11 @@ export const useAppStore = create<AppStore>()(
 
       createBudget: async (budgetData) => {
         try {
-          const budget = await db.createBudget(budgetData);
+          const budget = await database.createBudget(budgetData);
           
           // Update state optimistically
           const currentBudgets = get().budgets;
           set({ budgets: [...currentBudgets, budget] });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
           
           return budget;
         } catch (error) {
@@ -270,7 +227,7 @@ export const useAppStore = create<AppStore>()(
 
       updateBudget: async (id, updates) => {
         try {
-          const updated = await db.updateBudget(id, updates);
+          const updated = await database.updateBudget(id, updates);
           if (!updated) return;
           
           // Update state optimistically
@@ -279,11 +236,6 @@ export const useAppStore = create<AppStore>()(
             b.id === id ? updated : b
           );
           set({ budgets: newBudgets });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
         } catch (error) {
           console.error('Failed to update budget:', error);
           throw error;
@@ -292,18 +244,13 @@ export const useAppStore = create<AppStore>()(
 
       deleteBudget: async (id) => {
         try {
-          const success = await db.deleteBudget(id);
+          const success = await database.deleteBudget(id);
           if (!success) return;
           
           // Update state optimistically
           const currentBudgets = get().budgets;
           const newBudgets = currentBudgets.filter(b => b.id !== id);
           set({ budgets: newBudgets });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
         } catch (error) {
           console.error('Failed to delete budget:', error);
           throw error;
@@ -313,7 +260,7 @@ export const useAppStore = create<AppStore>()(
       // Goal operations
       loadGoals: async () => {
         try {
-          const goals = await db.goals.where('deleted').equals(0).toArray();
+          const goals = await database.getGoals();
           set({ goals });
         } catch (error) {
           console.error('Failed to load goals:', error);
@@ -322,16 +269,11 @@ export const useAppStore = create<AppStore>()(
 
       createGoal: async (goalData) => {
         try {
-          const goal = await db.createGoal(goalData);
+          const goal = await database.createGoal(goalData);
           
           // Update state optimistically
           const currentGoals = get().goals;
           set({ goals: [...currentGoals, goal] });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
           
           return goal;
         } catch (error) {
@@ -342,7 +284,7 @@ export const useAppStore = create<AppStore>()(
 
       updateGoal: async (id, updates) => {
         try {
-          const updated = await db.updateGoal(id, updates);
+          const updated = await database.updateGoal(id, updates);
           if (!updated) return;
           
           // Update state optimistically
@@ -351,11 +293,6 @@ export const useAppStore = create<AppStore>()(
             g.id === id ? updated : g
           );
           set({ goals: newGoals });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
         } catch (error) {
           console.error('Failed to update goal:', error);
           throw error;
@@ -364,18 +301,13 @@ export const useAppStore = create<AppStore>()(
 
       deleteGoal: async (id) => {
         try {
-          const success = await db.deleteGoal(id);
+          const success = await database.deleteGoal(id);
           if (!success) return;
           
           // Update state optimistically
           const currentGoals = get().goals;
           const newGoals = currentGoals.filter(g => g.id !== id);
           set({ goals: newGoals });
-          
-          // Trigger sync in background
-          if (navigator.onLine) {
-            get().triggerSync();
-          }
         } catch (error) {
           console.error('Failed to delete goal:', error);
           throw error;
@@ -387,7 +319,7 @@ export const useAppStore = create<AppStore>()(
         set({ isOnline });
         if (isOnline) {
           // Trigger sync when coming online
-          get().triggerSync();
+          
         }
       },
 
@@ -395,23 +327,9 @@ export const useAppStore = create<AppStore>()(
       setSyncStatus: (isSyncing: boolean) => set({ isSyncing }),
 
       triggerSync: async () => {
-        try {
-          set({ isSyncing: true });
-          const result = await syncEngine.sync();
-          
-          if (result.success) {
-            set({ lastSync: result.lastSync });
-            
-            // Reload data if items were pulled from server
-            if (result.itemsPulled > 0) {
-              await get().loadAllData();
-            }
-          }
-        } catch (error) {
-          console.error('Sync failed:', error);
-        } finally {
-          set({ isSyncing: false });
-        }
+        // Sync functionality disabled for now
+        console.log('[Store] Sync disabled for now');
+        return Promise.resolve();
       },
 
       // Load all data from IndexedDB
@@ -435,8 +353,13 @@ export const useAppStore = create<AppStore>()(
 
       // Selectors
       getBalance: () => {
+        return get().balance;
+      },
+
+      getBalanceWithInitial: async (settings?: Settings | null) => {
         const { transactions } = get();
-        return calculateBalance(transactions);
+        const currentSettings = settings || await database.getSettings();
+        return calculateBalance(transactions, currentSettings?.initial_balance_cents || 0);
       },
 
       getCategoryById: (id: string) => {
