@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAppStore } from '@/stores/appStoreWithDB';
 import { Logo } from '@/components/Logo';
-import { DAYS_OF_WEEK, generateId, now, parseMoney, getCurrencySymbol } from '@/lib/utils';
+import { DAYS_OF_WEEK, parseMoney, getCurrencySymbol } from '@/lib/utils';
 
 export default function Page() {
   const router = useRouter();
   const { updateSettings } = useSettingsStore();
-  const { createTransaction } = useAppStore();
   
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -23,9 +22,8 @@ export default function Page() {
 
     try {
       const balanceCents = parseMoney(balance);
-      const timestamp = now();
       
-      // Save settings
+      // Save settings (initial balance will be used in balance calculation)
       await updateSettings({
         currency_code: currency,
         reveal_day: revealDay,
@@ -34,19 +32,9 @@ export default function Page() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       
-      // Create initial balance transaction for traceability
-      const initialTransaction = {
-        id: generateId(),
-        created_at: timestamp,
-        updated_at: timestamp,
-        deleted: false,
-        amount_cents: balanceCents,
-        type: 'adjustment' as const,
-        description: 'Initial balance',
-        occurred_at: new Date().toISOString(),
-      };
-      
-      await createTransaction(initialTransaction);
+      // Note: We don't create an adjustment transaction here because
+      // the initial_balance_cents in settings is already used in balance calculation.
+      // Creating a transaction would double-count the initial balance.
 
       // Navigate to dashboard
       router.push('/');
